@@ -245,6 +245,19 @@ class CodeVEngine:
 
         return self._run(fn)
 
+    def with_cv(self, fn: Callable[[Any], dict]) -> dict:
+        """Run ``fn(cv)`` on the COM thread with the live COM object.
+
+        For typed API calls (MTF_1FLD and friends). ``fn`` returns the body of
+        the envelope; events raised while it ran are attached as usual.
+        """
+
+        def call() -> dict:
+            self._ensure_started()
+            return fn(self._cv)
+
+        return self._run(call)
+
     # -- long-running commands ---------------------------------------------
 
     def async_start(self, command: str) -> dict:

@@ -14,6 +14,7 @@ try:  # mcp 2.x
 except ImportError:  # mcp 1.x
     from mcp.server.fastmcp import FastMCP as MCPServer
 
+from codev_mcp import analyses
 from codev_mcp.engine import CodeVEngine
 
 INSTRUCTIONS = """\
@@ -27,6 +28,9 @@ edit by reading the value back with `evaluate` or `get_surface_table`.
 Commands are CODE V command-line syntax; separate several with `;`. Values are
 read with database items in parentheses, e.g. `(EFL)`, `(THI S2)`, `(GLA S1)`.
 Surface 0 is the object and the last surface is the image.
+
+For image quality prefer `get_rms_spot`, `get_wavefront_error` and `get_mtf`,
+which return numbers, over parsing listing text from SPO, WAV or MTF.
 
 Use `run_command` for anything that finishes in seconds. Use
 `start_long_command` then `poll_long_command` for optimization (AUT),
@@ -168,6 +172,53 @@ def get_surface_table() -> dict[str, Any]:
         )
     result["surfaces"] = rows
     return result
+
+
+# -- analyses -----------------------------------------------------------------
+
+
+@mcp.tool()
+def get_rms_spot(zoom: int = 1, fields: list[int] | None = None) -> dict[str, Any]:
+    """RMS spot diameter per field, in lens units (polychromatic, nominal focus).
+
+    `fields` is a list of field numbers; omit it for all fields.
+    """
+    return analyses.rms_spot(engine, zoom, fields)
+
+
+@mcp.tool()
+def get_wavefront_error(
+    zoom: int = 1,
+    wavelength: int = 0,
+    nrd: int = 0,
+    best_focus: bool = False,
+    fields: list[int] | None = None,
+) -> dict[str, Any]:
+    """RMS wavefront error (waves) and Strehl ratio per field.
+
+    `wavelength` is a wavelength number, or 0 for polychromatic. `nrd` is rays
+    across the pupil diameter (0 uses CODE V's default of 20). With
+    `best_focus`, each field is evaluated at its own best focus and
+    `focus_shift` reports where that is.
+    """
+    return analyses.wavefront_error(engine, zoom, wavelength, nrd, best_focus, fields)
+
+
+@mcp.tool()
+def get_mtf(
+    frequencies: list[float],
+    zoom: int = 1,
+    fields: list[int] | None = None,
+    diffraction: bool = True,
+    nrd: int = 0,
+) -> dict[str, Any]:
+    """MTF modulation per field and spatial frequency, at azimuths 0 and 90.
+
+    `frequencies` are in cycles/mm at the image. Each row also gives the
+    diffraction-limit modulation at that frequency. Set `diffraction` false
+    for geometrical MTF. `nrd` 0 uses CODE V's default of 60.
+    """
+    return analyses.mtf(engine, frequencies, zoom, fields, diffraction, nrd)
 
 
 # -- long-running commands ----------------------------------------------------

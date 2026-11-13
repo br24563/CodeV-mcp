@@ -45,6 +45,29 @@ async def main() -> int:
             ok &= (await call("get_system_summary"))["ok"]
             table = await call("get_surface_table")
             ok &= table["ok"]
+
+            # Typed analyses on the unmodified Cooke triplet.
+            spot = await call("get_rms_spot")
+            ok &= spot["ok"] and len(spot["results"]) == 3
+            # Manual's worked example: RMSSPOT(1,1,1,.01) on cooke1 = 0.008562
+            ok &= abs(spot["results"][0]["rms_spot_diameter"] - 0.00856) < 2e-4
+            wfe = await call("get_wavefront_error")
+            ok &= wfe["ok"] and all(0 < r["strehl"] <= 1 for r in wfe["results"])
+            best = await call("get_wavefront_error", best_focus=True, fields=[1])
+            ok &= best["ok"] and best["results"][0]["rms_waves"] <= wfe["results"][0]["rms_waves"]
+            m = await call("get_mtf", frequencies=[20, 40], fields=[1, 3])
+            ok &= m["ok"] and len(m["results"]) == 4
+            ok &= all(
+                0 <= r[a]["modulation"] <= r[a]["diffraction_limit"] + 1e-6 <= 1 + 1e-6
+                for r in m["results"]
+                for a in ("azimuth_0", "azimuth_90")
+            )
+            # On axis the two azimuths must agree for a rotationally symmetric lens.
+            ok &= abs(m["results"][0]["azimuth_0"]["modulation"] - m["results"][0]["azimuth_90"]["modulation"]) < 1e-6
+            # Bad inputs must fail, not return numbers.
+            ok &= (await call("get_rms_spot", fields=[9]))["ok"] is False
+            ok &= (await call("get_mtf", frequencies=[], fields=[1]))["ok"] is False
+
             ok &= (await call("run_command", command="thi s2 5.5"))["ok"]
             ok &= (await call("evaluate", expression="(THI S2)")).get("value") == 5.5
             # A bad database item must come back as a failure, not a stale value.

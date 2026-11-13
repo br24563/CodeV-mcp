@@ -44,6 +44,9 @@ claude mcp add codev -- C:\full\path\to\.venv\Scripts\python.exe -m codev_mcp
 | `open_lens` / `save_lens` | Restore or save a lens |
 | `get_system_summary` | Title, EFL, f-number, wavelengths, fields |
 | `get_surface_table` | Radius, thickness, glass, semi-diameter per surface |
+| `get_rms_spot` | RMS spot diameter per field |
+| `get_wavefront_error` | RMS wavefront error and Strehl per field, nominal or best focus |
+| `get_mtf` | Modulation and diffraction limit per field and frequency, azimuths 0 and 90 |
 | `start_long_command` / `poll_long_command` / `stop_long_command` | Optimization and other long runs |
 
 Every tool returns an envelope with `ok`, `errors`, `warnings` and `plots`,
@@ -72,5 +75,6 @@ reports the version that actually answered.
 ## Layout
 
 - `src/codev_mcp/engine.py` — COM wrapper; one worker thread owns the COM object
+- `src/codev_mcp/analyses.py` — typed analyses (RMSSPOT, RMS_1FLD, MTF_1FLD)
 - `src/codev_mcp/server.py` — MCP tool definitions
 - `scripts/` — connection tests
